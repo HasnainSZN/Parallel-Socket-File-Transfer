@@ -1,0 +1,4 @@
+# Ignore compiled executable files
+client.exe
+server.exe
+
