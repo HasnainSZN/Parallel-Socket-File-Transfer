@@ -2,6 +2,9 @@
 #include <fstream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <chrono>  // For timing
+#include <windows.h>  // For system info
+#include <intrin.h>  // For CPU info
 
 #pragma comment(lib, "ws2_32.lib") // Link with ws2_32.lib
 
@@ -9,7 +12,44 @@
 #define PORT 8080
 #define BUFFER_SIZE 1024
 
+
+// Function to get CPU info
+std::string GetCPUInfo() {
+    char CPUBrandString[0x40];
+    int CPUInfo[4] = { -1 };
+    __cpuid(CPUInfo, 0x80000002);
+    memcpy(CPUBrandString, CPUInfo, sizeof(CPUInfo));
+    __cpuid(CPUInfo, 0x80000003);
+    memcpy(CPUBrandString + 16, CPUInfo, sizeof(CPUInfo));
+    __cpuid(CPUInfo, 0x80000004);
+    memcpy(CPUBrandString + 32, CPUInfo, sizeof(CPUInfo));
+    return std::string(CPUBrandString);
+}
+
+
+// Function to get system memory info
+std::string GetMemoryInfo() {
+    MEMORYSTATUSEX memInfo;
+    memInfo.dwLength = sizeof(MEMORYSTATUSEX);
+    GlobalMemoryStatusEx(&memInfo);
+    DWORDLONG totalPhysMem = memInfo.ullTotalPhys;
+    return std::to_string(totalPhysMem / (1024 * 1024 * 1024)) + " GB";
+}
+
 int main() {
+
+
+    // Print hardware info
+    std::cout << "Hardware Information:" << std::endl;
+    std::cout << "CPU: " << GetCPUInfo() << std::endl;
+    std::cout << "RAM: " << GetMemoryInfo() << std::endl;
+
+
+    // Start timing
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+
+    
     WSADATA wsaData;
     SOCKET clientSocket;
     struct sockaddr_in serverAddr;

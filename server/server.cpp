@@ -3,6 +3,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <thread>
+#include <chrono>   // For timing
+#include <omp.h>    // For OpenMP
 
 #pragma comment(lib, "ws2_32.lib") // Link with ws2_32.lib
 
@@ -86,20 +88,42 @@ int main() {
 
     std::cout << "Server listening on port " << PORT << std::endl;
 
-    while (true) {
-        // Accept a connection
+    // --- Serial Execution ---
+    auto startSerial = std::chrono::high_resolution_clock::now();
+
+    for (int i = 0; i < 5; ++i) {  
         clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &addrLen);
         if (clientSocket == INVALID_SOCKET) {
             std::cerr << "Accept failed." << std::endl;
-            continue; // Continue to the next iteration
+            continue;
         }
-
-        // Create a new thread to handle the client
-        std::thread(handleClient, clientSocket).detach();
+        handleClient(clientSocket);  // Handle each client serially
     }
+
+    auto endSerial = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> serialDuration = endSerial - startSerial;
+    std::cout << "Serial Execution Time: " << serialDuration.count() << " seconds" << std::endl;
+
+    // --- Parallel Execution using OpenMP ---
+    auto startParallel = std::chrono::high_resolution_clock::now();
+
+    #pragma omp parallel for num_threads(4)
+    for (int i = 0; i < 5; ++i) {
+        clientSocket = accept(serverSocket, (struct sockaddr*)&clientAddr, &addrLen);
+        if (clientSocket == INVALID_SOCKET) {
+            std::cerr << "Accept failed." << std::endl;
+            continue;
+        }
+        handleClient(clientSocket);  // Each client is handled in parallel
+    }
+
+    auto endParallel = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> parallelDuration = endParallel - startParallel;
+    std::cout << "Parallel Execution Time: " << parallelDuration.count() << " seconds" << std::endl;
 
     // Clean up
     closesocket(serverSocket);
     WSACleanup();
+
     return 0;
 }
